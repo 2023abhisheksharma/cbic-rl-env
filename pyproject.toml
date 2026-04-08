@@ -25,6 +25,9 @@ dev = [
   "pytest>=8.0.0",
 ]
 
+[project.scripts]
+server = "server:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["environment"]
 include = [

@@ -304,8 +304,14 @@ async def ws(websocket: WebSocket):
 # Entry point
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console entrypoint for running the API server."""
     import uvicorn
+
     port = int(os.getenv("PORT", "7860"))
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
+
+
+if __name__ == "__main__":
+    main()
 
