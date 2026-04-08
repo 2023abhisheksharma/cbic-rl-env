@@ -131,6 +131,8 @@ TASK_CONFIGS = [
     },
 ]
 
+DEFAULT_TASK_NAME = os.getenv("INFERENCE_TASK", "show-cause-notice")
+
 BENCHMARK_CASE_IDS = {
     "manifest-anomaly-detection": "CASE-004",
     "channel-assignment": "CASE-017",
@@ -758,7 +760,11 @@ def run_task(task_config: dict) -> None:
 
 
 def main():
-    for task_config in TASK_CONFIGS:
+    runtime_tasks = [t for t in TASK_CONFIGS if t["task_name"] == DEFAULT_TASK_NAME]
+    if not runtime_tasks:
+        runtime_tasks = [t for t in TASK_CONFIGS if t["task_name"] == "show-cause-notice"]
+
+    for task_config in runtime_tasks:
         run_task(task_config)
 
 

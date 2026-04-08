@@ -26,7 +26,8 @@ try:
     from openenv.core.env_server import Environment
 except ImportError:
     try:
-        from openenv_core.env_server import Environment
+        from importlib import import_module
+        Environment = import_module("openenv_core.env_server").Environment
     except ImportError:
         class Environment:
             pass
