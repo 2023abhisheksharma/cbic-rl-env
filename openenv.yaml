@@ -1,0 +1,72 @@
+name: india-customs-inspection
+version: '1.0.0'
+description: >
+  RL environment simulating CBIC customs officer decisions on import cargo.
+  Agent detects anomalies, assigns inspection channels, and drafts legal
+  Show Cause Notices across 60 synthetic Bills of Entry.
+
+server:
+  host: 0.0.0.0
+  port: 7860
+  endpoints:
+    reset: {method: POST, path: /reset}
+    step: {method: POST, path: /step}
+    state: {method: GET, path: /state}
+    health: {method: GET, path: /health}  # Fix #11: space after colon
+    tasks: {method: GET, path: /tasks}
+    websocket: {method: WS, path: /ws}
+
+observation_space:
+  type: object
+  description: Cargo manifest (Bill of Entry) with importer, goods, routing details
+  properties:
+    boe_number: {type: string}
+    port_of_entry: {type: string}
+    importer_name: {type: string}
+    iec_code: {type: string}
+    iec_age_months: {type: integer}
+    country_of_origin: {type: string}
+    country_of_export: {type: string}
+    commodity: {type: string}
+    hs_code: {type: string}
+    declared_weight_kg: {type: number}
+    declared_value_usd: {type: number}
+    market_value_usd: {type: number, nullable: true}
+    previous_violations: {type: integer}
+    related_party: {type: boolean}
+    related_party_disclosed: {type: boolean}
+    routing_countries: {type: array, items: {type: string}}
+    container_type: {type: string}
+
+action_space:
+  type: object
+  description: Task-specific action submitted via POST /step
+  oneOf:
+    - {task: detect_anomalies, anomalies: "array of anomaly type strings"}
+    - {task: assign_channel, channel: "GREEN | ORANGE | RED"}
+    - {task: draft_scn, notice_text: "string (150+ words)"}
+
+reward_range: [0.0, 1.0]
+
+tasks:
+  - name: manifest-anomaly-detection
+    difficulty: easy
+    steps: 1
+    description: Detect all anomaly types present in the manifest. Severity-weighted recall scoring.
+
+  - name: channel-assignment
+    difficulty: medium
+    steps: 2
+    description: Detect anomalies then assign correct CBIC channel. Cross-consistency check applies.
+
+  - name: show-cause-notice
+    difficulty: hard
+    steps: 3
+    description: Full pipeline ending in SCN draft citing actual manifest figures and legal sections.
+
+data:
+  seed: 42
+  total_cases: 60
+  distribution: {clean: 20, easy: 20, medium: 12, hard: 8}
+  anomaly_types: 8
+
