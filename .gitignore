@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Local artifacts
+*.log
+.tmp/
+outputs/
+
+# OS/editor
+.DS_Store
+.vscode/
