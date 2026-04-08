@@ -26,6 +26,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 SERVER_URL = os.getenv("SERVER_URL", "http://localhost:7860")  # Fix #8
 BENCHMARK_MODE = os.getenv("BENCHMARK_MODE", "false").lower() == "true"
+FX_RATE_INR_PER_USD = 83.0
 client: OpenAI | None = None
 
 
@@ -68,7 +69,7 @@ You MUST include in the SCN:
    (declared value, market value, weight, IEC age in months)
 2. At least 2 real Customs Act 1962 section numbers
    (valid: 14, 18, 46, 47, 111, 112, 113, 114, 114A, 127)
-3. A specific duty/penalty demand amount in INR or USD
+3. A specific duty/penalty demand amount in INR
 4. At least 3 paragraphs. Minimum 150 words.
 
 Return ONLY valid JSON: {"scn_text": "<full SCN text here>"}"""
@@ -77,12 +78,14 @@ STEP0_SYSTEM = """You are a CBIC intake officer extracting core manifest facts.
 Return ONLY valid JSON with key 'key_facts' containing:
 - declared_value_usd
 - market_value_usd
+- assessed_value_inr
+- fx_rate_used
 - declared_weight_kg
 - country_of_origin
 - iec_age_months
 
 Example:
-{"key_facts": {"declared_value_usd": 1200, "market_value_usd": 4800, "declared_weight_kg": 250, "country_of_origin": "China", "iec_age_months": 6}}"""
+{"key_facts": {"declared_value_usd": 1200, "market_value_usd": 4800, "assessed_value_inr": 99600, "fx_rate_used": 83.0, "declared_weight_kg": 250, "country_of_origin": "China", "iec_age_months": 6}}"""
 
 STEP_RANK_SYSTEM = """You are a CBIC risk assessor.
 Given the anomaly list, rank anomalies from highest to lowest operational risk.
@@ -96,7 +99,7 @@ Valid set: 14, 18, 46, 47, 111, 112, 113, 114, 114A, 127"""
 
 STEP_ENFORCE_SYSTEM = """You are drafting the final enforcement recommendation.
 Return ONLY valid JSON: {"enforcement_recommendation": "..."}
-Include duty demand/penalty/confiscation direction and at least one numeric amount."""
+Include duty demand/penalty/confiscation direction and at least one INR amount (not USD)."""
 
 # ---------------------------------------------------------------------------
 # Task configuration
@@ -414,11 +417,14 @@ def build_benchmark_payload(
 ) -> dict:
     """Deterministic local policy for BENCHMARK_MODE runs."""
     if action_name == "extract_key_facts":
+        declared_usd = int(manifest.get("declared_value_usd") or 0)
         return {
             "task": "extract_key_facts",
             "key_facts": {
-                "declared_value_usd": int(manifest.get("declared_value_usd") or 0),
+                "declared_value_usd": declared_usd,
                 "market_value_usd": int(manifest.get("market_value_usd") or 0),
+                "assessed_value_inr": int(declared_usd * FX_RATE_INR_PER_USD),
+                "fx_rate_used": FX_RATE_INR_PER_USD,
                 "declared_weight_kg": int(manifest.get("declared_weight_kg") or 0),
                 "country_of_origin": str(manifest.get("country_of_origin", "")),
                 "iec_age_months": int(manifest.get("iec_age_months") or 0),

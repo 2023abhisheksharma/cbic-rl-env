@@ -70,6 +70,8 @@ ANOMALY_LEGAL_BASIS = {
     AnomalyType.HS_CODE_RISK.value: "HSN classification compliance guidance",
 }
 
+FX_RATE_INR_PER_USD = 83.0
+
 
 def _deterministic_shift_label(boe_number: str) -> str:
     shifts = ["morning", "afternoon", "night"]
@@ -90,19 +92,32 @@ def _norm_text(value: Any) -> str:
 
 
 def _score_key_facts(submitted: Dict[str, Any], manifest: CargoManifest) -> tuple[float, Dict[str, Any]]:
+    assessed_value_inr = int((manifest.declared_value_usd or 0.0) * FX_RATE_INR_PER_USD)
     expected = {
-        "declared_value_usd": str(int(manifest.declared_value_usd)),
-        "market_value_usd": str(int(manifest.market_value_usd or 0)),
-        "declared_weight_kg": str(int(manifest.declared_weight_kg)),
+        "declared_value_usd": int(manifest.declared_value_usd),
+        "market_value_usd": int(manifest.market_value_usd or 0),
+        "declared_weight_kg": int(manifest.declared_weight_kg),
         "country_of_origin": _norm_text(manifest.country_of_origin),
-        "iec_age_months": str(manifest.iec_age_months),
+        "iec_age_months": int(manifest.iec_age_months),
+        "assessed_value_inr": assessed_value_inr,
+        "fx_rate_used": FX_RATE_INR_PER_USD,
     }
     matched: list[str] = []
     mismatched: list[str] = []
     for key, expected_val in expected.items():
-        if _norm_text(submitted.get(key, "")).replace(",", "") == expected_val:
-            matched.append(key)
-        else:
+        candidate = submitted.get(key, None)
+        try:
+            if key == "country_of_origin":
+                ok = _norm_text(candidate) == expected_val
+            elif key == "fx_rate_used":
+                ok = abs(float(candidate) - float(expected_val)) <= 0.5
+            else:
+                ok = int(float(str(candidate).replace(",", ""))) == int(expected_val)
+            if ok:
+                matched.append(key)
+            else:
+                mismatched.append(key)
+        except (TypeError, ValueError):
             mismatched.append(key)
     score = len(matched) / len(expected)
     details = {
@@ -172,11 +187,14 @@ def _score_enforcement_text(text: str, assigned_channel: str) -> tuple[float, Di
     txt = (text or "").lower()
     keywords = ["duty", "penalty", "confiscation", "seizure", "adjudication", "demand"]
     keyword_hits = sum(1 for k in keywords if k in txt)
-    has_amount = bool(re.search(r"(?:inr|rs\.?|usd)\s*[\d,]+", txt))
+    has_inr_amount = bool(re.search(r"(?:inr|rs\.?)\s*[\d,]+", txt))
+    has_usd_amount = bool(re.search(r"usd\s*[\d,]+", txt))
 
     base = min(1.0, keyword_hits / 3)
-    if has_amount:
+    if has_inr_amount:
         base = min(1.0, base + 0.25)
+    if has_usd_amount and not has_inr_amount:
+        base = max(0.0, base - 0.25)
 
     if assigned_channel == "RED" and not any(k in txt for k in ["seizure", "confiscation", "detention"]):
         base = max(0.0, base - 0.2)
@@ -185,7 +203,8 @@ def _score_enforcement_text(text: str, assigned_channel: str) -> tuple[float, Di
 
     return max(0.0, min(1.0, base)), {
         "keyword_hits": keyword_hits,
-        "has_amount": has_amount,
+        "has_inr_amount": has_inr_amount,
+        "has_usd_amount": has_usd_amount,
         "assigned_channel": assigned_channel,
     }
 
@@ -448,7 +467,7 @@ class CustomsEnvironment(Environment):
             details = {**base_details, **enforce_details}
             feedback = (
                 f"Enforcement recommendation scored with keyword_hits={enforce_details['keyword_hits']} "
-                f"and has_amount={enforce_details['has_amount']}."
+                f"and has_inr_amount={enforce_details['has_inr_amount']}."
             )
             if state.get("agent_channel") == "RED" and reward < 0.6:
                 shaping_penalty += 0.10

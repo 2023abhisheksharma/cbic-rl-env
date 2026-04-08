@@ -51,7 +51,23 @@ action_space:
           enum: [extract_key_facts]
         key_facts:
           type: object
-          additionalProperties: true
+          additionalProperties: false
+          required:
+            - declared_value_usd
+            - market_value_usd
+            - assessed_value_inr
+            - fx_rate_used
+            - declared_weight_kg
+            - country_of_origin
+            - iec_age_months
+          properties:
+            declared_value_usd: {type: number}
+            market_value_usd: {type: number}
+            assessed_value_inr: {type: number}
+            fx_rate_used: {type: number}
+            declared_weight_kg: {type: number}
+            country_of_origin: {type: string}
+            iec_age_months: {type: integer}
     - type: object
       required: [task, anomalies]
       additionalProperties: false

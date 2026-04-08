@@ -55,6 +55,8 @@ def test_reward_bounds_across_all_tasks() -> None:
             "key_facts": {
                 "declared_value_usd": 1000,
                 "market_value_usd": 1200,
+                "assessed_value_inr": 83000,
+                "fx_rate_used": 83.0,
                 "declared_weight_kg": 200,
                 "country_of_origin": "China",
                 "iec_age_months": 6,
@@ -113,6 +115,8 @@ def test_scn_text_notice_text_mapping_in_http_api() -> None:
             "key_facts": {
                 "declared_value_usd": 1200,
                 "market_value_usd": 4800,
+                "assessed_value_inr": 99600,
+                "fx_rate_used": 83.0,
                 "declared_weight_kg": 250,
                 "country_of_origin": "China",
                 "iec_age_months": 6,
