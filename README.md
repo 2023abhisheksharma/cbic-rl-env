@@ -189,6 +189,12 @@ export BENCHMARK_MODE=true
 python inference.py
 ```
 
+## Dependency Notes
+
+- Core runtime uses FastAPI, Uvicorn, Pydantic, OpenAI, PyYAML, and HTTPX.
+- `websockets` is intentionally included for `/ws` protocol support.
+- `openenv-core` is intentionally included for OpenEnv-compatible typing/client integration.
+
 ## Docker Run
 
 ```bash

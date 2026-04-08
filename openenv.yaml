@@ -43,10 +43,46 @@ action_space:
   type: object
   description: Task-specific action submitted via POST /step
   oneOf:
-    - {task: detect_anomalies, anomalies: "array of anomaly type strings"}
-    - {task: assign_channel, channel: "GREEN | ORANGE | RED"}
-    - {task: draft_scn, notice_text: "string (150+ words)"}
-    - {task: draft_scn, scn_text: "string alias accepted and mapped to notice_text"}
+    - type: object
+      required: [task, anomalies]
+      properties:
+        task:
+          type: string
+          enum: [detect_anomalies]
+        anomalies:
+          type: array
+          items:
+            type: string
+            enum:
+              - repeat_violator
+              - high_risk_origin
+              - weight_volume_mismatch
+              - severe_undervaluation
+              - new_iec_high_value
+              - suspicious_routing
+              - undisclosed_related_party
+              - hs_code_risk
+    - type: object
+      required: [task, channel]
+      properties:
+        task:
+          type: string
+          enum: [assign_channel]
+        channel:
+          type: string
+          enum: [GREEN, ORANGE, RED]
+    - type: object
+      required: [task]
+      properties:
+        task:
+          type: string
+          enum: [draft_scn]
+        notice_text:
+          type: string
+          minLength: 150
+        scn_text:
+          type: string
+          minLength: 150
 
 reward_range: [0.0, 1.0]
 

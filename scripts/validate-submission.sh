@@ -127,15 +127,22 @@ else
     venv/bin/python server.py >/tmp/cbic_validate_server.log 2>&1 &
     SERVER_PID=$!
     SERVER_STARTED=1
-    sleep 2
   else
     python server.py >/tmp/cbic_validate_server.log 2>&1 &
     SERVER_PID=$!
     SERVER_STARTED=1
-    sleep 2
   fi
 
-  if curl -fsS http://localhost:7860/health >/dev/null 2>&1; then
+  SERVER_UP=0
+  for _ in $(seq 1 20); do
+    if curl -fsS http://localhost:7860/health >/dev/null 2>&1; then
+      SERVER_UP=1
+      break
+    fi
+    sleep 1
+  done
+
+  if [ "$SERVER_UP" = "1" ]; then
     pass "Server started successfully on :7860"
   else
     fail "Server failed to start on :7860"
@@ -234,7 +241,7 @@ os.environ['MODEL_NAME'] = 'Qwen/Qwen2.5-72B-Instruct'
 import inference
 
 
-def fake_reset(http, task_name):
+def fake_reset(http, task_name, case_id=None):
     return {'manifest': {'boe_number':'X','port_of_entry':'JNPT','importer_name':'A','iec_code':'IEC','iec_age_months':6,'country_of_origin':'IN','country_of_export':'IN','routing_countries':['IN'],'commodity':'C','hs_code':'1','declared_weight_kg':1,'declared_value_usd':1,'market_value_usd':2,'previous_violations':0,'related_party':False,'related_party_disclosed':True,'container_type':'20GP','description':'d'}}
 
 def fake_step(http, payload):
